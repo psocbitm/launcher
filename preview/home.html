@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arc Launcher — Home Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #090b10;
+      color: #f7f7fa;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      --muted: rgba(241, 243, 250, .62);
+      --gutter: clamp(32px, 5vw, 88px);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 820px;
+      min-height: 100vh;
+      overflow: hidden;
+      background: #090b10;
+    }
+
+    .wallpaper {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background:
+        radial-gradient(ellipse at 72% 23%, rgba(89, 122, 169, .32), transparent 37%),
+        radial-gradient(ellipse at 19% 55%, rgba(41, 76, 112, .34), transparent 43%),
+        linear-gradient(120deg, #111a25 0%, #10151e 43%, #171b24 100%);
+    }
+
+    .wallpaper::after {
+      position: absolute;
+      inset: 0;
+      content: "";
+      background: linear-gradient(180deg, rgba(7, 9, 13, .1) 0%, rgba(7, 9, 13, .17) 36%, #090b10 100%);
+    }
+
+    .topbar {
+      height: 88px;
+      padding: 0 var(--gutter);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: rgba(255, 255, 255, .9);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      font-size: 19px;
+      font-weight: 650;
+      letter-spacing: -.35px;
+    }
+
+    .brand-mark {
+      width: 31px;
+      height: 31px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, .26);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .1);
+      font-size: 17px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      color: rgba(255, 255, 255, .82);
+      font-size: 16px;
+    }
+
+    main {
+      height: calc(100vh - 88px);
+      padding: clamp(24px, 5vh, 60px) var(--gutter) 50px;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    main::-webkit-scrollbar { display: none; }
+
+    .greeting {
+      margin-bottom: clamp(38px, 6vh, 68px);
+      max-width: 900px;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 1.7px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(42px, 5.5vw, 76px);
+      line-height: 1.04;
+      letter-spacing: -3.8px;
+      font-weight: 630;
+    }
+
+    .section {
+      margin: 0 0 44px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 0 0 18px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: clamp(20px, 2vw, 26px);
+      line-height: 1.25;
+      letter-spacing: -.55px;
+      font-weight: 620;
+    }
+
+    .section-hint {
+      color: rgba(255, 255, 255, .45);
+      font-size: 13px;
+    }
+
+    .continue-row, .app-row {
+      display: flex;
+      gap: 20px;
+      overflow-x: auto;
+      padding: 10px 6px 18px;
+      margin: 0 -6px;
+      scrollbar-width: none;
+    }
+
+    .continue-row::-webkit-scrollbar, .app-row::-webkit-scrollbar { display: none; }
+
+    .show-card {
+      flex: 0 0 clamp(260px, 29vw, 420px);
+      border-radius: 17px;
+      outline: 0 solid transparent;
+      transform: scale(1);
+      transition: transform 160ms ease, outline 160ms ease, box-shadow 160ms ease;
+    }
+
+    .show-art {
+      position: relative;
+      height: clamp(132px, 15vw, 210px);
+      overflow: hidden;
+      border-radius: inherit;
+      background: linear-gradient(135deg, #25384d, #88765b 54%, #161b23);
+    }
+
+    .show-card:nth-child(2) .show-art { background: linear-gradient(135deg, #18232e, #38788a 50%, #c2a77b); }
+    .show-card:nth-child(3) .show-art { background: linear-gradient(135deg, #342c45, #8a567a 54%, #d39c75); }
+
+    .show-art::before {
+      position: absolute;
+      inset: 0;
+      content: "";
+      background:
+        radial-gradient(ellipse at 72% 24%, rgba(255,255,255,.26), transparent 32%),
+        linear-gradient(0deg, rgba(6,8,12,.55), transparent 70%);
+    }
+
+    .art-title {
+      position: absolute;
+      left: 20px;
+      bottom: 17px;
+      font-size: clamp(19px, 2.2vw, 29px);
+      font-weight: 720;
+      letter-spacing: -.65px;
+      text-shadow: 0 2px 16px rgba(0,0,0,.42);
+    }
+
+    .progress {
+      height: 3px;
+      overflow: hidden;
+      border-radius: 9px;
+      background: rgba(255,255,255,.2);
+    }
+
+    .progress span {
+      display: block;
+      height: 100%;
+      width: 62%;
+      border-radius: inherit;
+      background: #f4f4f6;
+    }
+
+    .show-card:nth-child(2) .progress span { width: 34%; }
+    .show-card:nth-child(3) .progress span { width: 81%; }
+
+    .show-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 2px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .app-row { gap: clamp(14px, 1.8vw, 24px); }
+
+    .app-card {
+      flex: 0 0 clamp(112px, 11.4vw, 164px);
+      aspect-ratio: 1.05;
+      display: grid;
+      place-items: center;
+      border-radius: 25px;
+      color: white;
+      font-size: clamp(20px, 2.6vw, 36px);
+      font-weight: 750;
+      letter-spacing: -1px;
+      box-shadow: 0 10px 26px rgba(0,0,0,.16);
+      outline: 0 solid transparent;
+      transform: scale(1);
+      transition: transform 160ms ease, outline 160ms ease, box-shadow 160ms ease;
+    }
+
+    .app-card:nth-child(1) { background: linear-gradient(145deg,#e6483d,#a80e22); }
+    .app-card:nth-child(2) { background: #f5f3f1; color: #191919; font-size: clamp(15px,1.8vw,23px); }
+    .app-card:nth-child(3) { background: linear-gradient(145deg,#9658f4,#5933ca); }
+    .app-card:nth-child(4) { background: #101114; color: #f5f5f5; font-size: clamp(18px,2vw,27px); }
+    .app-card:nth-child(5) { background: linear-gradient(145deg,#37bf79,#16724b); font-size: clamp(15px,1.8vw,23px); }
+    .app-card:nth-child(6) { background: linear-gradient(145deg,#3f7fe8,#1e4fa7); font-size: clamp(15px,1.8vw,23px); }
+
+    .app-label {
+      display: block;
+      padding-top: 12px;
+      color: rgba(255,255,255,.77);
+      font-size: 13px;
+      text-align: center;
+      letter-spacing: .05px;
+    }
+
+    .focusable:focus {
+      outline: 3px solid rgba(255,255,255,.94);
+      outline-offset: 4px;
+      transform: scale(1.055);
+      box-shadow: 0 18px 46px rgba(0,0,0,.34), 0 0 0 1px rgba(255,255,255,.16);
+      z-index: 2;
+    }
+
+    .app-shell { flex: 0 0 clamp(112px, 11.4vw, 164px); }
+
+    .footer {
+      padding: 8px 0 28px;
+      color: rgba(255,255,255,.38);
+      font-size: 12px;
+    }
+
+    @media (max-height: 740px) {
+      .topbar { height: 70px; }
+      main { height: calc(100vh - 70px); padding-top: 24px; }
+      .greeting { margin-bottom: 28px; }
+      .section { margin-bottom: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wallpaper"></div>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">A</span><span>Arc</span></div>
+    <div class="status"><span>◉ &nbsp; Wi-Fi</span><span>9:41</span></div>
+  </header>
+
+  <main>
+    <section class="greeting" aria-label="Welcome">
+      <p class="eyebrow">Monday, October 19</p>
+      <h1>Good evening.</h1>
+    </section>
+
+    <section class="section" aria-labelledby="continue-title">
+      <div class="section-heading">
+        <h2 id="continue-title">Continue Watching</h2>
+        <span class="section-hint">Use arrow keys to explore</span>
+      </div>
+      <div class="continue-row">
+        <article class="show-card focusable" tabindex="0" aria-label="The Last Horizon, continue episode 4">
+          <div class="show-art"><span class="art-title">THE LAST HORIZON</span></div>
+          <div class="progress"><span></span></div>
+          <div class="show-meta"><span>Episode 4 · The Crossing</span><span>28 min left</span></div>
+        </article>
+        <article class="show-card focusable" tabindex="0" aria-label="Blue Planet, continue episode 2">
+          <div class="show-art"><span class="art-title">BLUE PLANET</span></div>
+          <div class="progress"><span></span></div>
+          <div class="show-meta"><span>Episode 2 · Open Water</span><span>41 min left</span></div>
+        </article>
+        <article class="show-card focusable" tabindex="0" aria-label="Afterlight, continue">
+          <div class="show-art"><span class="art-title">AFTERLIGHT</span></div>
+          <div class="progress"><span></span></div>
+          <div class="show-meta"><span>Season 1 · Episode 7</span><span>16 min left</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="favorites-title">
+      <div class="section-heading"><h2 id="favorites-title">Your Apps</h2></div>
+      <div class="app-row">
+        <div class="app-shell"><div class="app-card focusable" tabindex="0" aria-label="Plex">plex</div><span class="app-label">Plex</span></div>
+        <div class="app-shell"><div class="app-card focusable" tabindex="0" aria-label="YouTube">▶</div><span class="app-label">YouTube</span></div>
+        <div class="app-shell"><div class="app-card focusable" tabindex="0" aria-label="Twitch">t</div><span class="app-label">Twitch</span></div>
+        <div class="app-shell"><div class="app-card focusable" tabindex="0" aria-label="Netflix">N</div><span class="app-label">Netflix</span></div>
+        <div class="app-shell"><div class="app-card focusable" tabindex="0" aria-label="Spotify">●</div><span class="app-label">Spotify</span></div>
+        <div class="app-shell"><div class="app-card focusable" tabindex="0" aria-label="Settings">⚙</div><span class="app-label">Settings</span></div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="recent-title">
+      <div class="section-heading"><h2 id="recent-title">Recently Added</h2></div>
+      <div class="app-row">
+        <div class="app-shell"><div class="app-card focusable" tabindex="0" aria-label="Disney Plus">D+</div><span class="app-label">Disney+</span></div>
+        <div class="app-shell"><div class="app-card focusable" tabindex="0" aria-label="Prime Video">prime</div><span class="app-label">Prime Video</span></div>
+        <div class="app-shell"><div class="app-card focusable" tabindex="0" aria-label="Music">♫</div><span class="app-label">Music</span></div>
+        <div class="app-shell"><div class="app-card focusable" tabindex="0" aria-label="LocalSend">↗</div><span class="app-label">LocalSend</span></div>
+      </div>
+    </section>
+    <div class="footer">Arc Launcher visual preview · mock content · use Tab or arrow keys to navigate</div>
+  </main>
+
+  <script>
+    const cards = [...document.querySelectorAll(".focusable")];
+    document.addEventListener("keydown", (event) => {
+      const directions = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+      if (!directions.includes(event.key)) return;
+
+      const current = document.activeElement;
+      if (!cards.includes(current)) {
+        cards[0]?.focus();
+        event.preventDefault();
+        return;
+      }
+
+      const from = current.getBoundingClientRect();
+      const originX = from.left + from.width / 2;
+      const originY = from.top + from.height / 2;
+      const candidates = cards
+        .filter((card) => card !== current)
+        .map((card) => {
+          const rect = card.getBoundingClientRect();
+          const dx = rect.left + rect.width / 2 - originX;
+          const dy = rect.top + rect.height / 2 - originY;
+          const primary = event.key === "ArrowLeft" ? -dx
+            : event.key === "ArrowRight" ? dx
+            : event.key === "ArrowUp" ? -dy : dy;
+          const cross = event.key === "ArrowLeft" || event.key === "ArrowRight" ? Math.abs(dy) : Math.abs(dx);
+          return { card, primary, cross };
+        })
+        .filter(({ primary }) => primary > 0)
+        .sort((a, b) => (a.primary + a.cross * 1.7) - (b.primary + b.cross * 1.7));
+
+      if (candidates.length) {
+        candidates[0].card.focus({ preventScroll: true });
+        candidates[0].card.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      }
+      event.preventDefault();
+    });
+  </script>
+</body>
+</html>

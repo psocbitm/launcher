@@ -10,7 +10,16 @@ import 'network_widget.dart';
 
 class FocusAwareAppBar extends StatefulWidget implements PreferredSizeWidget
 {
-  const FocusAwareAppBar({Key? key}) : super(key: key);
+  final bool autoHide;
+  final bool focused;
+  final ValueChanged<bool> onFocusChanged;
+
+  const FocusAwareAppBar({
+    Key? key,
+    required this.autoHide,
+    required this.focused,
+    required this.onFocusChanged,
+  }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
@@ -18,13 +27,14 @@ class FocusAwareAppBar extends StatefulWidget implements PreferredSizeWidget
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => Size.fromHeight(
+    autoHide && !focused ? 0 : kToolbarHeight,
+  );
 }
 
 class FocusAwareAppBarState extends State<FocusAwareAppBar>
 {
-  bool focused = false;
-  late FocusNode _settingsFocusNode;
+  late final FocusNode _settingsFocusNode;
 
   @override
   void initState() {
@@ -44,33 +54,18 @@ class FocusAwareAppBarState extends State<FocusAwareAppBar>
 
   @override
   Widget build(BuildContext context) {
-    return Selector<SettingsService, bool>(
-      selector: (_, settings) => settings.autoHideAppBarEnabled,
-      builder: (context, autoHide, widget) {
-        if (autoHide) {
-          return Focus(
-            canRequestFocus: false,
-            child: AnimatedContainer(
-              curve: Curves.decelerate,
-              duration: Duration(milliseconds: 150),
-              height: focused ? kToolbarHeight : 0,
-              child: widget!
-            ),
-            onFocusChange: (hasFocus) {
-              if (hasFocus) {
-                context.read<LauncherState>().setAppGridFocused(false);
-              }
-              this.setState(() {
-                focused = hasFocus;
-              });
-            }
-          );
+    return Focus(
+      canRequestFocus: false,
+      onFocusChange: (hasFocus) {
+        if (hasFocus) {
+          context.read<LauncherState>().setAppGridFocused(false);
         }
-
-        return widget!;
+        widget.onFocusChanged(hasFocus);
       },
-      child: RepaintBoundary(
-        child: AppBar(
+      child: Offstage(
+        offstage: widget.autoHide && !widget.focused,
+        child: RepaintBoundary(
+          child: AppBar(
           elevation: 0,
           scrolledUnderElevation: 0,
           backgroundColor: Colors.transparent,
@@ -159,6 +154,7 @@ class FocusAwareAppBarState extends State<FocusAwareAppBar>
               ),
             ),
           ],
+          ),
         ),
       ),
     );

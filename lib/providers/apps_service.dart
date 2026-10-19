@@ -41,8 +41,11 @@ class AppsService extends ChangeNotifier
 
   List<LauncherSection> _launcherSections = List.empty(growable: true);
   Map<String, App> _applications = Map();
-  Map<String, Uint8List> _iconCache = Map();
-  Map<String, Uint8List> _bannerCache = Map();
+  static const int _maxAppImageCacheBytes = 16 * 1024 * 1024;
+  final LinkedHashMap<String, Uint8List> _appImageCache = LinkedHashMap();
+  final Map<String, Future<Uint8List>> _pendingAppImages = {};
+  final Map<String, int> _appImageGenerations = {};
+  int _appImageCacheBytes = 0;
 
   Map<int, Category> _categoriesById = Map();
 
@@ -104,8 +107,8 @@ class AppsService extends ChangeNotifier
       }
 
       if (changedPackageName != null) {
-        _iconCache.remove(changedPackageName);
-        _bannerCache.remove(changedPackageName);
+        _invalidateAppImage(changedPackageName, 'icon');
+        _invalidateAppImage(changedPackageName, 'banner');
         _dirtyImagePackages.add(changedPackageName);
       }
 
@@ -167,8 +170,8 @@ class AppsService extends ChangeNotifier
             } else {
               _applications[newApp.packageName] = newApp;
             }
-            _iconCache.remove(newApp.packageName);
-            _bannerCache.remove(newApp.packageName);
+            _invalidateAppImage(newApp.packageName, 'icon');
+            _invalidateAppImage(newApp.packageName, 'banner');
           }
           break;
         case "PACKAGE_REMOVED":
@@ -176,8 +179,8 @@ class AppsService extends ChangeNotifier
           await _database.deleteApps([packageName]);
 
           // Clear icon cache for removed app
-          _iconCache.remove(packageName);
-          _bannerCache.remove(packageName);
+          _invalidateAppImage(packageName, 'icon');
+          _invalidateAppImage(packageName, 'banner');
 
           App? application = _applications.remove(packageName);
 
@@ -197,20 +200,6 @@ class AppsService extends ChangeNotifier
 
     _initialized = true;
     notifyListeners();
-    
-    // Pre-cache icons for visible apps
-    _preCacheIcons();
-  }
-
-  Future<void> _preCacheIcons() async {
-    // Only cache apps that are not hidden
-    final visibleApps = _applications.values.where((app) => !app.hidden).toList();
-    for (var app in visibleApps) {
-      // Don't await, let it run in background
-      getAppIcon(app.packageName);
-      // Also cache banner if it's likely to be needed soon
-      getAppBanner(app.packageName);
-    }
   }
 
   AppsCompanion _buildAppCompanion(dynamic data) {
@@ -376,40 +365,32 @@ class AppsService extends ChangeNotifier
   }
 
   Future<Uint8List> getAppBanner(String packageName) async {
-    if (_bannerCache.containsKey(packageName)) {
-      return _bannerCache[packageName]!;
-    }
-
-    try {
-      final prefs = await _prefsAsync;
-      final customBannerPath = prefs.getString('custom_banner_$packageName');
-      if (customBannerPath != null) {
-        final file = File(customBannerPath);
-        if (await file.exists()) {
-          final bytes = await file.readAsBytes();
-          _bannerCache[packageName] = bytes;
-          return bytes;
+    return _loadAppImage(packageName, 'banner', () async {
+      try {
+        final prefs = await _prefsAsync;
+        final customBannerPath = prefs.getString('custom_banner_$packageName');
+        if (customBannerPath != null) {
+          final file = File(customBannerPath);
+          if (await file.exists()) {
+            return await file.readAsBytes();
+          }
         }
+      } on FileSystemException {
+        // File was deleted between check and read - clear stale reference
+        final prefs = await _prefsAsync;
+        await prefs.remove('custom_banner_$packageName');
+      } catch (_) {
+        // Ignore other errors reading custom banner
       }
-    } on FileSystemException {
-      // File was deleted between check and read - clear stale reference
-      final prefs = await _prefsAsync;
-      await prefs.remove('custom_banner_$packageName');
-    } catch (_) {
-      // Ignore other errors reading custom banner
-    }
 
-    final bytes = await _fLauncherChannel.getApplicationBanner(packageName);
-    if (bytes.isNotEmpty) {
-      _bannerCache[packageName] = bytes;
-    }
-    return bytes;
+      return _fLauncherChannel.getApplicationBanner(packageName);
+    });
   }
 
   Future<void> setCustomAppBanner(String packageName, String imagePath) async {
     final prefs = await _prefsAsync;
     await prefs.setString('custom_banner_$packageName', imagePath);
-    _bannerCache.remove(packageName);
+    _invalidateAppImage(packageName, 'banner');
     _dirtyImagePackages.add(packageName);
     notifyListeners();
   }
@@ -425,7 +406,7 @@ class AppsService extends ChangeNotifier
       }
     }
     await prefs.remove('custom_banner_$packageName');
-    _bannerCache.remove(packageName);
+    _invalidateAppImage(packageName, 'banner');
     _dirtyImagePackages.add(packageName);
     notifyListeners();
   }
@@ -436,14 +417,72 @@ class AppsService extends ChangeNotifier
   }
 
   Future<Uint8List> getAppIcon(String packageName) async {
-    if (_iconCache.containsKey(packageName)) {
-      return _iconCache[packageName]!;
+    return _loadAppImage(
+      packageName,
+      'icon',
+      () => _fLauncherChannel.getApplicationIcon(packageName),
+    );
+  }
+
+  Future<Uint8List> _loadAppImage(
+    String packageName,
+    String type,
+    Future<Uint8List> Function() load,
+  ) async {
+    final key = '$type:$packageName';
+    final cached = _appImageCache.remove(key);
+    if (cached != null) {
+      _appImageCache[key] = cached;
+      return cached;
     }
-    final bytes = await _fLauncherChannel.getApplicationIcon(packageName);
-    if (bytes.isNotEmpty) {
-      _iconCache[packageName] = bytes;
+
+    final pending = _pendingAppImages[key];
+    if (pending != null) {
+      return pending;
     }
-    return bytes;
+
+    final generation = _appImageGenerations[key] ?? 0;
+    final request = load();
+    _pendingAppImages[key] = request;
+    try {
+      final bytes = await request;
+      if (bytes.isNotEmpty && (_appImageGenerations[key] ?? 0) == generation) {
+        _cacheAppImage(key, bytes);
+      }
+      return bytes;
+    } finally {
+      if (identical(_pendingAppImages[key], request)) {
+        _pendingAppImages.remove(key);
+      }
+    }
+  }
+
+  void _cacheAppImage(String key, Uint8List bytes) {
+    if (bytes.lengthInBytes > _maxAppImageCacheBytes) {
+      return;
+    }
+
+    _removeCachedAppImage(key);
+    while (_appImageCacheBytes + bytes.lengthInBytes > _maxAppImageCacheBytes) {
+      final oldestKey = _appImageCache.keys.first;
+      _removeCachedAppImage(oldestKey);
+    }
+    _appImageCache[key] = bytes;
+    _appImageCacheBytes += bytes.lengthInBytes;
+  }
+
+  void _removeCachedAppImage(String key) {
+    final removed = _appImageCache.remove(key);
+    if (removed != null) {
+      _appImageCacheBytes -= removed.lengthInBytes;
+    }
+  }
+
+  void _invalidateAppImage(String packageName, String type) {
+    final key = '$type:$packageName';
+    _removeCachedAppImage(key);
+    _pendingAppImages.remove(key);
+    _appImageGenerations[key] = (_appImageGenerations[key] ?? 0) + 1;
   }
 
   Future<void> launchApp(App app) async {

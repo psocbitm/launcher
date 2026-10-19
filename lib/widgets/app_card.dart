@@ -103,8 +103,8 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
   late final AnimationController _animation;
 
   late final CurvedAnimation _curvedAnimation;
-  static const double _focusedScale = 1.07;
-  static const Duration _focusAnimationDuration = Duration(milliseconds: 180);
+  static const double _focusedScale = 1.045;
+  static const Duration _focusAnimationDuration = Duration(milliseconds: 140);
 
   @override
   void initState() {
@@ -196,13 +196,10 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
       onPressed: _onPressed,
       onLongPress: _onLongPress,
       child: AnimatedScale(
-        scale: _clicked ? 0.9 : 1.0,
-        duration: const Duration(milliseconds: 150),
+        scale: _clicked ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 110),
         curve: Curves.easeOutCubic,
-        child: AnimatedOpacity(
-          opacity: _clicked ? 0.85 : 1.0,
-          duration: const Duration(milliseconds: 150),
-          child: Column(
+        child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Flexible(
@@ -217,9 +214,9 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
                         fit: StackFit.expand,
                         children: [
                           Material(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                             clipBehavior: Clip.antiAlias,
-                            elevation: shouldHighlight ? 7 : 4,
+                            elevation: shouldHighlight ? 6 : 0,
                             shadowColor: Colors.black,
                             child: Stack(
                               fit: StackFit.expand,
@@ -271,7 +268,6 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
               if (showAppNames)
                 Padding(padding: const EdgeInsets.only(top: 8.0), child: _AppNameLabel(name: widget.application.name)),
             ],
-          ),
         ),
       ),
     );
@@ -288,8 +284,14 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
         bytes = await service.getAppIcon(widget.application.packageName);
       }
       if (mounted) {
+        final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+        final screenWidth = MediaQuery.sizeOf(context).width;
+        final cacheWidth = (screenWidth / widget.category.columnsCount * devicePixelRatio)
+            .round()
+            .clamp(480, 1024)
+            .toInt();
         setState(() {
-          _loadedImage = (type, ResizeImage(MemoryImage(bytes), width: 480));
+          _loadedImage = (type, ResizeImage(MemoryImage(bytes), width: cacheWidth));
         });
       }
     } catch (_) {
@@ -308,24 +310,47 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
 
   Widget _appImage() {
     App app = widget.application;
+    const cardRadius = BorderRadius.all(Radius.circular(16));
 
     if (_loadedImage != null) {
       final (type, image) = _loadedImage!;
       if (type == AppImageType.Banner) {
-        return Ink.image(image: image, fit: BoxFit.cover);
+        return Ink(
+          decoration: BoxDecoration(
+            borderRadius: cardRadius,
+            image: DecorationImage(
+              image: image,
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.high,
+            ),
+          ),
+        );
       } else {
         return Padding(
           padding: const EdgeInsets.all(8),
           child: Row(
             children: [
-              Expanded(flex: 2, child: Ink.image(image: image, height: double.maxFinite)),
+              Expanded(
+                flex: 2,
+                child: Ink(
+                  decoration: BoxDecoration(
+                    borderRadius: cardRadius,
+                    image: DecorationImage(
+                      image: image,
+                      filterQuality: FilterQuality.high,
+                    ),
+                  ),
+                ),
+              ),
               Flexible(
                 flex: 3,
                 child: Padding(
                   padding: const EdgeInsets.only(left: 8),
                   child: Text(
                     app.name,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 3,
                   ),
@@ -341,7 +366,9 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
         child: Center(
           child: Text(
             app.name,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
             overflow: TextOverflow.ellipsis,
             maxLines: 3,
           ),
@@ -630,8 +657,8 @@ class _HighlightOutline extends StatelessWidget {
       children: [
         DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color, width: 1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color, width: 1.5),
           ),
         ),
       ],

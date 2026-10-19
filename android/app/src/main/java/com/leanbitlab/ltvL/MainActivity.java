@@ -30,6 +30,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Build;
+import android.util.Log;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Pair;
@@ -66,6 +67,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionService;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
@@ -73,6 +75,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class MainActivity extends FlutterActivity {
+    private static final String TAG = "ArcLauncher";
+    private static final ExecutorService BACKGROUND_EXECUTOR = Executors.newFixedThreadPool(2);
     private final String METHOD_CHANNEL = "me.efesser.flauncher/method";
     private final String APPS_EVENT_CHANNEL = "me.efesser.flauncher/event_apps";
     private final String NETWORK_EVENT_CHANNEL = "me.efesser.flauncher/event_network";
@@ -88,9 +92,11 @@ public class MainActivity extends FlutterActivity {
 
         new MethodChannel(messenger, METHOD_CHANNEL).setMethodCallHandler((call, result) -> {
             switch (call.method) {
-                case "getApplications" -> result.success(getApplications());
-                case "getApplicationBanner" -> result.success(getApplicationBanner(call.arguments()));
-                case "getApplicationIcon" -> result.success(getApplicationIcon(call.arguments()));
+                case "getApplications" -> runInBackground(result, "APP_DISCOVERY_FAILED", this::getApplications);
+                case "getApplicationBanner" -> runInBackground(
+                        result, "APP_BANNER_FAILED", () -> getApplicationBanner((String) call.arguments()));
+                case "getApplicationIcon" -> runInBackground(
+                        result, "APP_ICON_FAILED", () -> getApplicationIcon((String) call.arguments()));
                 case "applicationExists" -> result.success(applicationExists(call.arguments()));
                 case "launchActivityFromAction" -> result.success(launchActivityFromAction(call.arguments()));
                 case "launchApp" -> result.success(launchApp(call.arguments()));
@@ -199,8 +205,20 @@ public class MainActivity extends FlutterActivity {
                 new NetworkEventStreamHandler(this));
     }
 
+    private <T> void runInBackground(MethodChannel.Result result, String errorCode, Callable<T> operation) {
+        BACKGROUND_EXECUTOR.execute(() -> {
+            try {
+                T value = operation.call();
+                runOnUiThread(() -> result.success(value));
+            } catch (Exception error) {
+                Log.e(TAG, "Background platform operation failed: " + errorCode, error);
+                runOnUiThread(() -> result.error(errorCode, error.getMessage(), null));
+            }
+        });
+    }
+
     private List<Map<String, Serializable>> getApplications() {
-        ExecutorService executor = Executors.newFixedThreadPool(4);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
         CompletionService<Pair<Boolean, List<ResolveInfo>>> queryIntentActivitiesCompletionService = new ExecutorCompletionService<>(
                 executor);
         queryIntentActivitiesCompletionService.submit(() -> Pair.create(false, queryIntentActivities(false)));

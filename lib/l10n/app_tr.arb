@@ -117,5 +117,9 @@
     "weekly": "Haftalık",
     "monthly": "Aylık",
     "grantPermission": "İzin ver",
-    "checkStatus": "Durumu denetle"
+    "checkStatus": "Durumu denetle",
+    "resetSettings": "Ayarları sıfırla",
+    "resetSettingsDescription": "Arc Launcher tercihlerini varsayılanlara döndürür ve parlaklık zamanlayıcısını kapatır. Uygulama kategorileriniz ve sıralamanız, duvar kâğıtlarınız ve özel banner'larınız korunur.",
+    "settingsResetComplete": "Launcher tercihleri sıfırlandı.",
+    "settingsResetFailed": "Launcher tercihleri sıfırlanamadı."
 }

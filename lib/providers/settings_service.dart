@@ -45,6 +45,7 @@ const String _showWatchNextSection = "show_watch_next_section";
 const String _dockDarkBackground = "dock_dark_background";
 const String _dockShadowEnabled = "dock_shadow_enabled";
 const String _showFocusBorders = "show_focus_borders";
+const String _timeBasedWallpaperEnabled = "time_based_wallpaper_enabled";
 
 // WiFi usage period options
 const String WIFI_USAGE_DAILY = "daily";
@@ -73,6 +74,32 @@ class SettingsService extends ChangeNotifier {
   static final defaultTimeFormat = "H:mm";
   final SharedPreferences _sharedPreferences;
 
+  static const _settingsKeys = [
+    _appHighlightAnimationEnabledKey,
+    _appKeyClickEnabledKey,
+    _autoHideAppBar,
+    _gradientUuidKey,
+    _backButtonAction,
+    _dateFormat,
+    _showCategoryTitles,
+    _showAppNamesBelowIcons,
+    _showDateInStatusBar,
+    _showTimeInStatusBar,
+    _timeFormat,
+    _wifiUsagePeriod,
+    _showWifiWidgetInStatusBar,
+    _showNetworkIndicatorInStatusBar,
+    _accentColor,
+    _screensaverClockStyle,
+    _dockBackdropFilterDisabled,
+    _backgroundBlurDisabled,
+    _showWatchNextSection,
+    _dockDarkBackground,
+    _dockShadowEnabled,
+    _showFocusBorders,
+    _timeBasedWallpaperEnabled,
+  ];
+
 
   bool get appHighlightAnimationEnabled =>
       showFocusBorders && (_sharedPreferences.getBool(_appHighlightAnimationEnabledKey) ?? false);
@@ -81,7 +108,7 @@ class SettingsService extends ChangeNotifier {
 
   bool get autoHideAppBarEnabled => _sharedPreferences.getBool(_autoHideAppBar) ?? false;
 
-  bool get showCategoryTitles => _sharedPreferences.getBool(_showCategoryTitles) ?? false;
+  bool get showCategoryTitles => _sharedPreferences.getBool(_showCategoryTitles) ?? true;
 
   bool get showAppNamesBelowIcons => _sharedPreferences.getBool(_showAppNamesBelowIcons) ?? false;
 
@@ -107,9 +134,9 @@ class SettingsService extends ChangeNotifier {
 
   String get screensaverClockStyle => _sharedPreferences.getString(_screensaverClockStyle) ?? "minimal";
 
-  bool get dockBackdropFilterDisabled => _sharedPreferences.getBool(_dockBackdropFilterDisabled) ?? false;
+  bool get dockBackdropFilterDisabled => _sharedPreferences.getBool(_dockBackdropFilterDisabled) ?? true;
 
-  bool get backgroundBlurDisabled => _sharedPreferences.getBool(_backgroundBlurDisabled) ?? false;
+  bool get backgroundBlurDisabled => _sharedPreferences.getBool(_backgroundBlurDisabled) ?? true;
 
   bool get showWatchNextSection => _sharedPreferences.getBool(_showWatchNextSection) ?? false;
 
@@ -232,10 +259,15 @@ class SettingsService extends ChangeNotifier {
     }
   }
 
-  bool get timeBasedWallpaperEnabled => _sharedPreferences.getBool("time_based_wallpaper_enabled") ?? false;
+  bool get timeBasedWallpaperEnabled => _sharedPreferences.getBool(_timeBasedWallpaperEnabled) ?? false;
 
   Future<void> setTimeBasedWallpaperEnabled(bool enabled) async {
-    await _sharedPreferences.setBool("time_based_wallpaper_enabled", enabled);
+    await _sharedPreferences.setBool(_timeBasedWallpaperEnabled, enabled);
+    notifyListeners();
+  }
+
+  Future<void> resetToDefaults() async {
+    await Future.wait(_settingsKeys.map(_sharedPreferences.remove));
     notifyListeners();
   }
 }

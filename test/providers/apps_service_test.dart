@@ -16,6 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import 'dart:typed_data';
+
 import 'package:drift/drift.dart';
 import 'package:flauncher/database.dart';
 import 'package:flauncher/providers/apps_service.dart';
@@ -177,6 +179,49 @@ void main() {
     final app = fakeApp();
 
     await appsService.launchApp(app);
+  });
+
+  test("coalesces concurrent app artwork requests", () async {
+    final channel = MockFLauncherChannel();
+    final database = MockFLauncherDatabase();
+    final appsService = await _buildInitialisedAppsService(channel, database, []);
+    final image = Uint8List.fromList([1, 2, 3]);
+    when(channel.getApplicationIcon("app.package")).thenAnswer((_) async {
+      await Future<void>.delayed(Duration.zero);
+      return image;
+    });
+
+    final results = await Future.wait([
+      appsService.getAppIcon("app.package"),
+      appsService.getAppIcon("app.package"),
+    ]);
+
+    expect(results, [image, image]);
+    verify(channel.getApplicationIcon("app.package")).called(1);
+  });
+
+  test("evicts least-recently-used app artwork within the cache budget", () async {
+    final channel = MockFLauncherChannel();
+    final database = MockFLauncherDatabase();
+    final appsService = await _buildInitialisedAppsService(channel, database, []);
+    final firstImage = Uint8List(6 * 1024 * 1024);
+    final secondImage = Uint8List(6 * 1024 * 1024);
+    final thirdImage = Uint8List(6 * 1024 * 1024);
+    when(channel.getApplicationIcon("first.package"))
+        .thenAnswer((_) async => firstImage);
+    when(channel.getApplicationIcon("second.package"))
+        .thenAnswer((_) async => secondImage);
+    when(channel.getApplicationIcon("third.package"))
+        .thenAnswer((_) async => thirdImage);
+
+    await appsService.getAppIcon("first.package");
+    await appsService.getAppIcon("second.package");
+    await appsService.getAppIcon("first.package"); // Refresh first package's LRU position.
+    await appsService.getAppIcon("third.package");
+    await appsService.getAppIcon("second.package");
+
+    verify(channel.getApplicationIcon("first.package")).called(1);
+    verify(channel.getApplicationIcon("second.package")).called(2);
   });
 
   test("openAppInfo calls channel", () async {

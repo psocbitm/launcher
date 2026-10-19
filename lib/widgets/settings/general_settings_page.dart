@@ -19,12 +19,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flauncher/l10n/app_localizations.dart';
+import 'package:flauncher/providers/brightness_service.dart';
+import 'package:flauncher/providers/settings_service.dart';
 import 'focusable_settings_tile.dart';
 import 'brightness_settings_page.dart';
 import 'date_time_format_page.dart';
 import 'back_button_action_page.dart';
 import 'wifi_usage_period_page.dart';
 import 'screensaver_clock_style_page.dart';
+import 'package:provider/provider.dart';
 
 
 class GeneralSettingsPage extends StatelessWidget {
@@ -75,7 +78,17 @@ class GeneralSettingsPage extends StatelessWidget {
                   title: Text(localizations.wifiUsagePeriod, style: Theme.of(context).textTheme.bodyMedium),
                   onPressed: () => Navigator.of(context).pushNamed(WifiUsagePeriodPage.routeName),
                 ),
-
+                const Divider(),
+                FocusableSettingsTile(
+                  leading: Icon(Icons.restart_alt, color: Theme.of(context).colorScheme.error),
+                  title: Text(
+                    localizations.resetSettings,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                  onPressed: () => _confirmReset(context, localizations),
+                ),
               ],
             ),
           ),
@@ -87,5 +100,48 @@ class GeneralSettingsPage extends StatelessWidget {
   Future<void> _openScreensaverSettings() async {
     const platform = MethodChannel('me.efesser.flauncher/method');
     platform.invokeMethod('openScreensaverSettings');
+  }
+
+  Future<void> _confirmReset(BuildContext context, AppLocalizations localizations) async {
+    final shouldReset = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(localizations.resetSettings),
+        content: Text(localizations.resetSettingsDescription),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(MaterialLocalizations.of(dialogContext).cancelButtonLabel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              localizations.resetSettings,
+              style: TextStyle(color: Theme.of(dialogContext).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldReset != true || !context.mounted) {
+      return;
+    }
+
+    try {
+      await context.read<BrightnessService>().resetToDefaults();
+      await context.read<SettingsService>().resetToDefaults();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(localizations.settingsResetComplete)),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${localizations.settingsResetFailed}: $error')),
+        );
+      }
+    }
   }
 }

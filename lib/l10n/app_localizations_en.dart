@@ -385,4 +385,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get checkStatus => 'Check Status';
+
+  @override
+  String get resetSettings => 'Reset settings';
+
+  @override
+  String get resetSettingsDescription =>
+      'Restore Arc Launcher preferences to their defaults and turn off the brightness scheduler. Your app categories and order, wallpapers, and custom banners will be kept.';
+
+  @override
+  String get settingsResetComplete => 'Launcher preferences reset.';
+
+  @override
+  String get settingsResetFailed => 'Could not reset launcher preferences.';
 }

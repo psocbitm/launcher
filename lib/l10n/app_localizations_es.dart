@@ -390,4 +390,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get checkStatus => 'Comprobar estado';
+
+  @override
+  String get resetSettings => 'Restablecer ajustes';
+
+  @override
+  String get resetSettingsDescription =>
+      'Restablece las preferencias de Arc Launcher y desactiva el programador de brillo. Se conservarán las categorías y el orden de las aplicaciones, los fondos de pantalla y los banners personalizados.';
+
+  @override
+  String get settingsResetComplete =>
+      'Se restablecieron las preferencias del launcher.';
+
+  @override
+  String get settingsResetFailed =>
+      'No se pudieron restablecer las preferencias del launcher.';
 }

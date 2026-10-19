@@ -54,6 +54,23 @@ void main() async {
     expect(sharedPreferences.getString("gradient_uuid"), "4730aa2d-1a90-49a6-9942-ffe82f470e26");
   });
 
+  test("resetToDefaults clears launcher preferences but keeps custom banners", () async {
+    await sharedPreferences.setString("accent_color", "FF0000");
+    await sharedPreferences.setBool("time_based_wallpaper_enabled", true);
+    await sharedPreferences.setString("custom_banner_com.example.app", "/wallpaper.png");
+
+    await settingsService.resetToDefaults();
+
+    expect(sharedPreferences.getString("accent_color"), isNull);
+    expect(sharedPreferences.getBool("time_based_wallpaper_enabled"), isNull);
+    expect(
+      sharedPreferences.getString("custom_banner_com.example.app"),
+      "/wallpaper.png",
+    );
+    expect(settingsService.showCategoryTitles, isTrue);
+    expect(settingsService.backgroundBlurDisabled, isTrue);
+    expect(settingsService.dockBackdropFilterDisabled, isTrue);
+  });
 
   group("getGradientUuid", () {
     test("without uuid from shared preferences", () async {

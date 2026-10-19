@@ -174,5 +174,9 @@
     "weekly": "Semanal",
     "monthly": "Mensual",
     "grantPermission": "Conceder permiso",
-    "checkStatus": "Comprobar estado"
+    "checkStatus": "Comprobar estado",
+    "resetSettings": "Restablecer ajustes",
+    "resetSettingsDescription": "Restablece las preferencias de Arc Launcher y desactiva el programador de brillo. Se conservarán las categorías y el orden de las aplicaciones, los fondos de pantalla y los banners personalizados.",
+    "settingsResetComplete": "Se restablecieron las preferencias del launcher.",
+    "settingsResetFailed": "No se pudieron restablecer las preferencias del launcher."
 }

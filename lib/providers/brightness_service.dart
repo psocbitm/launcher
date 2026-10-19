@@ -172,6 +172,18 @@ class BrightnessService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> resetToDefaults() async {
+    await setEnabled(false);
+    await Future.wait([
+      _sharedPreferences.remove(_brightnessMorning),
+      _sharedPreferences.remove(_brightnessDay),
+      _sharedPreferences.remove(_brightnessAfternoon),
+      _sharedPreferences.remove(_brightnessEvening),
+      _sharedPreferences.remove(_brightnessNight),
+    ]);
+    notifyListeners();
+  }
+
   TimeSlot getCurrentTimeSlot() {
     final now = DateTime.now();
     final hour = now.hour;

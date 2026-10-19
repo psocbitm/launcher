@@ -17,6 +17,7 @@
  */
 
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flauncher/providers/wallpaper_service.dart';
@@ -89,6 +90,7 @@ class _CachedBlurBackdropState extends _CachedBlurBackgroundState<CachedBlurBack
 }
 
 abstract class _CachedBlurBackgroundState<T extends StatefulWidget> extends State<T> {
+  static const double _maxRasterDimension = 1920;
   ui.Image? _blurred;
   Size _builtSize = Size.zero;
   int _builtRevision = -1;
@@ -112,8 +114,13 @@ abstract class _CachedBlurBackgroundState<T extends StatefulWidget> extends Stat
     if (_building) return;
     _building = true;
     try {
-      final pxWidth = (size.width * dpr).round();
-      final pxHeight = (size.height * dpr).round();
+      final rasterScale = math.min(
+        1.0,
+        _maxRasterDimension / (math.max(size.width, size.height) * dpr),
+      );
+      final rasterDpr = dpr * rasterScale;
+      final pxWidth = (size.width * rasterDpr).round();
+      final pxHeight = (size.height * rasterDpr).round();
       final rect = Rect.fromLTWH(0, 0, pxWidth.toDouble(), pxHeight.toDouble());
 
       ui.Image? source;
@@ -127,8 +134,8 @@ abstract class _CachedBlurBackgroundState<T extends StatefulWidget> extends Stat
       final blurPaint =
           Paint()
             ..imageFilter = ui.ImageFilter.blur(
-              sigmaX: sigma * dpr,
-              sigmaY: sigma * dpr,
+              sigmaX: sigma * rasterDpr,
+              sigmaY: sigma * rasterDpr,
               tileMode: TileMode.clamp,
             );
       canvas.saveLayer(rect, blurPaint);

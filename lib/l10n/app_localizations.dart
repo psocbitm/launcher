@@ -813,6 +813,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Check Status'**
   String get checkStatus;
+
+  /// No description provided for @resetSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset settings'**
+  String get resetSettings;
+
+  /// No description provided for @resetSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore Arc Launcher preferences to their defaults and turn off the brightness scheduler. Your app categories and order, wallpapers, and custom banners will be kept.'**
+  String get resetSettingsDescription;
+
+  /// No description provided for @settingsResetComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Launcher preferences reset.'**
+  String get settingsResetComplete;
+
+  /// No description provided for @settingsResetFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reset launcher preferences.'**
+  String get settingsResetFailed;
 }
 
 class _AppLocalizationsDelegate

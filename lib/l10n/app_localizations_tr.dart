@@ -387,4 +387,17 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get checkStatus => 'Durumu denetle';
+
+  @override
+  String get resetSettings => 'Ayarları sıfırla';
+
+  @override
+  String get resetSettingsDescription =>
+      'Arc Launcher tercihlerini varsayılanlara döndürür ve parlaklık zamanlayıcısını kapatır. Uygulama kategorileriniz ve sıralamanız, duvar kâğıtlarınız ve özel banner\'larınız korunur.';
+
+  @override
+  String get settingsResetComplete => 'Launcher tercihleri sıfırlandı.';
+
+  @override
+  String get settingsResetFailed => 'Launcher tercihleri sıfırlanamadı.';
 }

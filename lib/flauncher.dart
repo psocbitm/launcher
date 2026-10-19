@@ -44,10 +44,10 @@ import 'models/app.dart';
 import 'models/category.dart';
 
 const _kDockOuterPadding = EdgeInsets.only(
-  left: kLauncherSectionHorizontalPadding,
-  right: kLauncherSectionHorizontalPadding,
-  top: 10,
-  bottom: 16,
+  left: 32,
+  right: 32,
+  top: 8,
+  bottom: 12,
 );
 
 class FLauncher extends StatefulWidget {
@@ -61,6 +61,7 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
   final GlobalKey<FocusAwareAppBarState> _appBarKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _dockKey = GlobalKey();
+  bool _appBarFocused = false;
 
   @override
   void initState() {
@@ -83,10 +84,13 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) => Actions(
+  Widget build(BuildContext context) {
+    final autoHideAppBar = context.select<SettingsService, bool>((settings) => settings.autoHideAppBarEnabled);
+
+    return Actions(
     actions: <Type, Action<Intent>>{
       MoveFocusToSettingsIntent: CallbackAction<MoveFocusToSettingsIntent>(
-        onInvoke: (_) => _appBarKey.currentState?.focusSettings(),
+      onInvoke: (_) => _moveFocusToTop(),
       ),
     },
     child: FocusTraversalGroup(
@@ -130,14 +134,28 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
                 ),
             child: Scaffold(
               backgroundColor: Colors.transparent,
-              appBar: FocusAwareAppBar(key: _appBarKey),
+              appBar: FocusAwareAppBar(
+                key: _appBarKey,
+                autoHide: autoHideAppBar,
+                focused: _appBarFocused,
+                onFocusChanged: (focused) {
+                  if (_appBarFocused != focused) {
+                    setState(() => _appBarFocused = focused);
+                  }
+                },
+              ),
               // (initialized (data.$1), layoutVersion (data.$2), showAppNamesBelowIcons (data.$3))
               body: Selector2<AppsService, SettingsService, (bool, int, bool)>(
                 selector: (_, appsService, settingsService) =>
                     (appsService.initialized, appsService.layoutVersion, settingsService.showAppNamesBelowIcons),
                 builder: (context, data, _) {
                   if (data.$1) {
-                    return _tvOSLayout(context, context.read<AppsService>(), showAppNames: data.$3);
+                    return _tvOSLayout(
+                      context,
+                      context.read<AppsService>(),
+                      autoHideAppBar: autoHideAppBar,
+                      showAppNames: data.$3,
+                    );
                   } else {
                     return _emptyState(context);
                   }
@@ -149,6 +167,7 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
       ),
     ),
   );
+  }
 
   void _setAppGridFocused(bool focused) {
     context.read<LauncherState>().setAppGridFocused(focused);
@@ -163,7 +182,32 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
     _setAppGridFocused(false);
   }
 
-  Widget _tvOSLayout(BuildContext context, AppsService appsService, {required bool showAppNames}) {
+  void _moveFocusToTop() {
+    _appBarKey.currentState?.focusSettings();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) {
+        return;
+      }
+
+      final position = _scrollController.position;
+      if (position.pixels <= position.minScrollExtent) {
+        return;
+      }
+
+      _scrollController.animateTo(
+        position.minScrollExtent,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  Widget _tvOSLayout(
+    BuildContext context,
+    AppsService appsService, {
+    required bool autoHideAppBar,
+    required bool showAppNames,
+  }) {
     final favoritesCategory = appsService.categories.firstWhereOrNull((c) => c.name == 'Favorites');
     final favoriteApps = favoritesCategory?.applications ?? const [];
 
@@ -176,6 +220,7 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
     final showWatchNextSection = context.select<SettingsService, bool>((s) => s.showWatchNextSection);
     final watchNextVisible = context.select<WatchNextService, bool>((s) => s.hasVisibleSection);
     final reserveWatchNextSpace = showWatchNextSection && watchNextVisible;
+    final appBarHeight = autoHideAppBar && !_appBarFocused ? 0.0 : kToolbarHeight;
 
     if (favoriteApps.isEmpty && otherSections.isEmpty) return _emptyState(context);
 
@@ -188,7 +233,7 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
               height:
                   MediaQuery.of(context).size.height -
                   MediaQuery.of(context).padding.top -
-                  kToolbarHeight -
+                  appBarHeight -
                   (reserveWatchNextSpace ? 410 : 150),
             ),
           ),
@@ -271,11 +316,13 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
             builder: (context, showTitle, _) {
               if (showTitle) {
                 return Padding(
-                  padding: const EdgeInsets.only(left: 40, bottom: 8, top: 8),
+                  padding: const EdgeInsets.only(left: 40, bottom: 10, top: 16),
                   child: Text(
                     category.name,
-                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                      shadows: const [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 8)],
+                    style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                      color: Colors.white.withValues(alpha: 0.78),
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 );
@@ -294,7 +341,7 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
                 padding: const EdgeInsets.only(
                   left: kLauncherSectionHorizontalPadding,
                   right: kLauncherSectionHorizontalPadding,
-                  bottom: 8,
+                  bottom: 16,
                 ),
                 child: CategoryRow(
                   key: sectionKey,
@@ -318,14 +365,14 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
               padding: const EdgeInsets.only(
                 left: kLauncherSectionHorizontalPadding,
                 right: kLauncherSectionHorizontalPadding,
-                bottom: 8,
+                bottom: 16,
               ),
               sliver: SliverGrid(
                 key: sectionKey,
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: category.columnsCount,
                   childAspectRatio: gridAspectRatio,
-                  mainAxisSpacing: 12,
+                  mainAxisSpacing: 16,
                   crossAxisSpacing: 0,
                 ),
                 delegate: SliverChildBuilderDelegate(
@@ -445,17 +492,19 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
     final darkBackground = context.select<SettingsService, bool>((s) => s.dockDarkBackground);
     final shadowEnabled = context.select<SettingsService, bool>((s) => s.dockShadowEnabled);
 
-    const dockBorderRadius = 24.0;
+    const dockBorderRadius = 28.0;
     final borderRadius = BorderRadius.circular(dockBorderRadius);
 
     final content = Container(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: darkBackground ? Colors.black.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+        color: darkBackground
+            ? Colors.black.withValues(alpha: 0.32)
+            : Colors.white.withValues(alpha: 0.08),
         borderRadius: borderRadius,
         border: Border.all(
-          color: darkBackground ? Colors.black.withOpacity(0.15) : Colors.white.withOpacity(0.15),
-          width: 1.5,
+          color: Colors.white.withValues(alpha: 0.12),
+          width: 1,
         ),
       ),
       child: CategoryCleanRow(
